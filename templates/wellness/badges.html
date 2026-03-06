@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}— Achievements{% endblock %}
+{% block m_nav_badges %}active{% endblock %}
+{% block d_nav_badges %}active{% endblock %}
+
+{% block extra_css %}
+.badges-hero {
+  background: linear-gradient(135deg,#FBBF24,#F59E0B);
+  padding: 32px 24px 44px; position: relative; overflow: hidden;
+}
+.badges-hero::before { content:''; position:absolute; width:160px; height:160px; background:rgba(255,255,255,0.08); border-radius:50%; top:-40px; right:-40px; }
+.progress-track { background:rgba(255,255,255,0.25); border-radius:99px; height:10px; overflow:hidden; margin:10px 0 4px; }
+.progress-fill  { background:#fff; height:100%; border-radius:99px; transition:width .6s ease; }
+.badge-card {
+  background:#F9FAFB; border:2px solid #E5E7EB; border-radius:18px;
+  padding:16px 18px; margin-bottom:11px;
+  display:flex; align-items:center; gap:14px; transition:all .2s ease;
+}
+.badge-card.earned { background:#fff; border-color:#FBBF24; box-shadow:0 4px 18px rgba(251,191,36,0.2); }
+.badge-emoji { font-size:38px; }
+.badge-card:not(.earned) .badge-emoji { filter:grayscale(100%); opacity:.3; }
+.badge-name { font-weight:900; font-size:15px; color:#9CA3AF; }
+.badge-card.earned .badge-name { color:#111827; }
+.badge-desc { font-size:12px; color:#6B7280; font-weight:600; margin-top:2px; }
+.badge-xp   { background:#F3F4F6; border-radius:9px; padding:4px 10px; font-size:11px; font-weight:800; color:#9CA3AF; white-space:nowrap; }
+.badge-card.earned .badge-xp { background:#FEF3C7; color:#92400E; }
+{% endblock %}
+
+{% block mobile_content %}
+<div class="animate-slide">
+  <div class="badges-hero">
+    <a href="{% url 'home' %}" style="background:rgba(255,255,255,0.25);border-radius:12px;padding:8px 14px;color:#fff;font-weight:800;font-size:14px;text-decoration:none;display:inline-block;margin-bottom:18px;">← Back</a>
+    <div style="font-family:'Righteous',cursive;color:#fff;font-size:26px;margin-bottom:4px;">Achievements 🏆</div>
+    <div style="color:rgba(255,255,255,0.8);font-weight:700;font-size:13px;">{{ earned_count }} of {{ total_count }} unlocked</div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width:{% widthratio earned_count total_count 100 %}%"></div>
+    </div>
+  </div>
+  <div style="padding:20px;margin-top:-10px;">
+    {% for item in badges_data %}
+    <div class="badge-card {% if item.earned %}earned{% endif %}">
+      <div class="badge-emoji">{{ item.badge.emoji }}</div>
+      <div style="flex:1;">
+        <div class="badge-name">{{ item.badge.name }}</div>
+        <div class="badge-desc">{{ item.badge.description }}</div>
+      </div>
+      <div class="badge-xp">+{{ item.badge.xp_reward }} XP</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block desktop_content %}
+<div class="animate-slide">
+  <div class="desktop-topbar">
+    <div class="desktop-page-title">🏆 Achievements</div>
+    <div class="stat-chip">{{ earned_count }}/{{ total_count }} unlocked</div>
+  </div>
+  <div style="max-width:700px;margin-bottom:24px;">
+    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#6B7280;margin-bottom:6px;">
+      <span>Progress</span><span>{{ earned_count }} / {{ total_count }}</span>
+    </div>
+    <div style="background:#F3F4F6;border-radius:99px;height:12px;overflow:hidden;">
+      <div style="background:linear-gradient(90deg,#FBBF24,#F97316);height:100%;width:{% widthratio earned_count total_count 100 %}%;border-radius:99px;transition:width .6s ease;"></div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:860px;">
+    {% for item in badges_data %}
+    <div class="badge-card {% if item.earned %}earned{% endif %}" style="padding:20px 22px;">
+      <div class="badge-emoji" style="font-size:44px;">{{ item.badge.emoji }}</div>
+      <div style="flex:1;">
+        <div class="badge-name" style="font-size:16px;">{{ item.badge.name }}</div>
+        <div class="badge-desc" style="font-size:13px;margin-top:3px;">{{ item.badge.description }}</div>
+      </div>
+      <div class="badge-xp">+{{ item.badge.xp_reward }} XP</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

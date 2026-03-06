@@ -1,0 +1,27 @@
+<div id="goal-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal()">
+    <div class="modal-sheet">
+      <div class="modal-title">✨ New Custom Goal</div>
+      <input id="cg-title" class="modal-input" type="text" placeholder="Goal title e.g. Run a 5K" maxlength="100"/>
+      <input id="cg-desc"  class="modal-input" type="text" placeholder="Description (optional)" maxlength="200"/>
+      <div style="margin-bottom:8px;">
+        <label style="font-weight:800;font-size:13px;color:#374151;display:block;margin-bottom:6px;">Target days</label>
+        <input id="cg-days" class="modal-input" type="number" value="30" min="1" max="365" style="width:120px;margin-bottom:0;"/>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-weight:800;font-size:13px;color:#374151;display:block;margin-bottom:8px;">Pick an emoji</label>
+        <div class="emoji-grid">
+          {% for e in emoji_choices %}
+          <div>
+            <input class="emoji-opt" type="radio" name="cg-emoji" id="em_{{ forloop.counter }}" value="{{ e }}" {% if forloop.first %}checked{% endif %}/>
+            <label class="emoji-label" for="em_{{ forloop.counter }}">{{ e }}</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="createCustomGoal()" style="flex:2;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#667EEA,#764BA2);color:#fff;font-weight:900;font-size:15px;cursor:pointer;font-family:'Nunito',sans-serif;">Create Goal 🚀</button>
+        <button onclick="closeModal()" style="flex:1;padding:14px;border:none;border-radius:14px;background:#F3F4F6;color:#6B7280;font-weight:900;font-size:15px;cursor:pointer;font-family:'Nunito',sans-serif;">Cancel</button>
+      </div>
+    </div>
+  </div>
+  

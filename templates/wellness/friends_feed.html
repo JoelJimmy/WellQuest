@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}— Friends Feed{% endblock %}
+{% block m_nav_feed %}active{% endblock %}
+{% block d_nav_feed %}active{% endblock %}
+
+{% block extra_css %}
+.feed-hero {
+  background: linear-gradient(135deg,#F97316,#EF4444);
+  padding: 32px 24px 44px; position: relative; overflow: hidden;
+}
+.feed-hero::before { content:''; position:absolute; width:160px; height:160px; background:rgba(255,255,255,0.08); border-radius:50%; top:-40px; right:-40px; }
+
+.feed-item {
+  background:#fff; border-radius:20px; padding:16px 18px; margin-bottom:12px;
+  border: 2px solid #F3F4F6; transition:all .2s;
+  display:flex; align-items:flex-start; gap:14px;
+}
+.feed-avatar { font-size:28px; width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.feed-body   { flex:1; }
+.feed-user   { font-weight:900; font-size:14px; color:#111827; }
+.feed-action { font-size:13px; color:#6B7280; font-weight:600; margin-top:2px; }
+.feed-time   { font-size:11px; color:#9CA3AF; font-weight:700; margin-top:4px; }
+.feed-cat-chip { display:inline-flex; align-items:center; gap:4px; border-radius:8px; padding:3px 9px; font-size:11px; font-weight:800; margin-top:6px; }
+.xp-chip { background:#FEF3C7; color:#92400E; border-radius:8px; padding:3px 9px; font-size:11px; font-weight:800; }
+
+.empty-feed { text-align:center; padding:60px 24px; color:#9CA3AF; }
+.empty-feed-emoji { font-size:56px; margin-bottom:16px; display:block; }
+.empty-feed-title { font-family:'Righteous',cursive; font-size:22px; color:#374151; margin-bottom:8px; }
+.empty-feed-sub   { font-size:14px; font-weight:600; line-height:1.6; }
+
+.cat-mental    { background:#EDE9FE; color:#6D28D9; }
+.cat-fitness   { background:#FFF7ED; color:#C2410C; }
+.cat-nutrition { background:#ECFDF5; color:#065F46; }
+.cat-sleep     { background:#EFF6FF; color:#1E40AF; }
+{% endblock %}
+
+{% block mobile_content %}
+<div class="animate-slide">
+  <div class="feed-hero">
+    <div style="font-family:'Righteous',cursive;color:#fff;font-size:26px;margin-bottom:4px;">Friends Feed 📰</div>
+    <div style="color:rgba(255,255,255,0.8);font-weight:700;font-size:13px;">{{ friend_count }} friend{{ friend_count|pluralize }} · recent check-ins</div>
+  </div>
+  <div style="padding:20px;margin-top:-20px;">
+    {% if recent_checkins %}
+      {% for checkin in recent_checkins %}
+      <div class="feed-item">
+        <div class="feed-avatar" style="
+          {% if checkin.category == 'mental' %}background:#EDE9FE;
+          {% elif checkin.category == 'fitness' %}background:#FFF7ED;
+          {% elif checkin.category == 'nutrition' %}background:#ECFDF5;
+          {% else %}background:#EFF6FF;{% endif %}">
+          {{ checkin.user.avatar }}
+        </div>
+        <div class="feed-body">
+          <div class="feed-user">{{ checkin.user.username }}</div>
+          <div class="feed-action">completed a {{ checkin.get_category_display }} check-in</div>
+          {% if checkin.task %}<div style="font-size:13px;color:#374151;font-weight:700;margin-top:4px;">"{{ checkin.task.text }}"</div>{% endif %}
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            <span class="feed-cat-chip cat-{{ checkin.category }}">
+              {% if checkin.category == 'mental' %}🧘{% elif checkin.category == 'fitness' %}💪{% elif checkin.category == 'nutrition' %}🥗{% else %}😴{% endif %}
+              {{ checkin.get_category_display }}
+            </span>
+            <span class="xp-chip">+{{ checkin.xp_earned }} XP</span>
+          </div>
+          <div class="feed-time">{{ checkin.completed_at|timesince }} ago</div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-feed">
+        <span class="empty-feed-emoji">👥</span>
+        <div class="empty-feed-title">Nothing here yet!</div>
+        <div class="empty-feed-sub">
+          {% if friend_count == 0 %}
+            Add friends to see their check-ins here.<br>
+            <a href="{% url 'people' %}" style="color:#667EEA;font-weight:800;text-decoration:none;">Find friends →</a>
+          {% else %}
+            Your friends haven't checked in yet today.<br>Check back later!
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block desktop_content %}
+<div class="animate-slide">
+  <div class="desktop-topbar">
+    <div class="desktop-page-title">📰 Friends Feed</div>
+    <div class="desktop-stats-row">
+      <div class="stat-chip">👥 {{ friend_count }} friend{{ friend_count|pluralize }}</div>
+      <a href="{% url 'people' %}" style="background:linear-gradient(135deg,#667EEA,#764BA2);border-radius:14px;padding:10px 18px;color:#fff;font-weight:900;font-size:14px;text-decoration:none;">+ Find Friends</a>
+    </div>
+  </div>
+
+  {% if recent_checkins %}
+  <div style="max-width:600px;">
+    {% for checkin in recent_checkins %}
+    <div class="feed-item">
+      <div class="feed-avatar" style="font-size:32px;width:52px;height:52px;
+        {% if checkin.category == 'mental' %}background:#EDE9FE;
+        {% elif checkin.category == 'fitness' %}background:#FFF7ED;
+        {% elif checkin.category == 'nutrition' %}background:#ECFDF5;
+        {% else %}background:#EFF6FF;{% endif %}">
+        {{ checkin.user.avatar }}
+      </div>
+      <div class="feed-body">
+        <div class="feed-user" style="font-size:15px;">{{ checkin.user.username }}</div>
+        <div class="feed-action">completed a {{ checkin.get_category_display }} check-in</div>
+        {% if checkin.task %}<div style="font-size:14px;color:#374151;font-weight:700;margin-top:4px;">"{{ checkin.task.text }}"</div>{% endif %}
+        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <span class="feed-cat-chip cat-{{ checkin.category }}">
+            {% if checkin.category == 'mental' %}🧘{% elif checkin.category == 'fitness' %}💪{% elif checkin.category == 'nutrition' %}🥗{% else %}😴{% endif %}
+            {{ checkin.get_category_display }}
+          </span>
+          <span class="xp-chip">+{{ checkin.xp_earned }} XP</span>
+          <span class="feed-time" style="margin-top:0;">{{ checkin.completed_at|timesince }} ago</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-feed" style="padding:80px 0;">
+    <span class="empty-feed-emoji">👥</span>
+    <div class="empty-feed-title">Nothing here yet!</div>
+    <div class="empty-feed-sub">
+      {% if friend_count == 0 %}
+        Add friends to see their check-ins here.<br>
+        <a href="{% url 'people' %}" style="color:#667EEA;font-weight:800;text-decoration:none;">Find friends →</a>
+      {% else %}
+        Your friends haven't checked in recently. Check back later!
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

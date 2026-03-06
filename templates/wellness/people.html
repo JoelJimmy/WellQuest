@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}— Friends{% endblock %}
+{% block m_nav_people %}active{% endblock %}
+{% block d_nav_people %}active{% endblock %}
+
+{% block extra_css %}
+.people-hero {
+  background: linear-gradient(135deg,#667EEA,#764BA2);
+  padding: 32px 24px 44px; position: relative; overflow: hidden;
+}
+.people-hero::before { content:''; position:absolute; width:160px; height:160px; background:rgba(255,255,255,0.08); border-radius:50%; top:-40px; right:-40px; }
+
+.user-card {
+  background:#fff; border:2px solid #E5E7EB; border-radius:20px; padding:16px 18px;
+  margin-bottom:12px; display:flex; align-items:center; gap:14px; transition:all .2s;
+}
+.user-avatar { font-size:32px; width:52px; height:52px; background:#F3F4F6; border-radius:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.user-info   { flex:1; min-width:0; }
+.user-name   { font-weight:900; font-size:15px; color:#111827; }
+.user-level  { font-size:12px; color:#9CA3AF; font-weight:700; margin-top:2px; }
+.user-xp     { font-size:12px; color:#6B7280; font-weight:600; }
+
+.friend-btn {
+  border:none; border-radius:12px; padding:8px 14px; font-weight:800; font-size:12px;
+  cursor:pointer; font-family:'Nunito',sans-serif; transition:all .2s; white-space:nowrap;
+}
+.friend-btn:hover { opacity:.85; transform:scale(.97); }
+.btn-add     { background:#EDE9FE; color:#6D28D9; }
+.btn-pending { background:#FEF3C7; color:#92400E; }
+.btn-friends { background:#D1FAE5; color:#065F46; }
+.btn-accept  { background:#10B981; color:#fff; }
+.btn-decline { background:#FEF2F2; color:#DC2626; }
+
+.pending-section { background:#FEF3C7; border:2px solid #FDE68A; border-radius:20px; padding:18px; margin-bottom:20px; }
+.pending-title   { font-weight:900; font-size:15px; color:#92400E; margin-bottom:12px; }
+.pending-item    { display:flex; align-items:center; gap:12px; padding:8px 0; }
+.pending-item:not(:last-child) { border-bottom:1px solid #FDE68A; }
+
+.search-input {
+  width:100%; border:2px solid #E5E7EB; border-radius:14px; padding:12px 16px;
+  font-family:'Nunito',sans-serif; font-size:15px; font-weight:600; outline:none;
+  transition:border-color .2s; background:#fff; margin-bottom:16px;
+}
+.search-input:focus { border-color:#667EEA; }
+{% endblock %}
+
+{% block mobile_content %}
+<div class="animate-slide">
+  <div class="people-hero">
+    <div style="font-family:'Righteous',cursive;color:#fff;font-size:26px;margin-bottom:4px;">Friends 👥</div>
+    <div style="color:rgba(255,255,255,0.8);font-weight:700;font-size:13px;">Connect with your wellness community</div>
+  </div>
+  <div style="padding:20px;margin-top:-20px;">
+    {% if pending_requests %}
+    <div class="pending-section">
+      <div class="pending-title">🔔 Friend Requests ({{ pending_count }})</div>
+      {% for fr in pending_requests %}
+      <div class="pending-item" id="pr-{{ fr.from_user.id }}">
+        <div style="font-size:26px;">{{ fr.from_user.avatar }}</div>
+        <div style="flex:1;">
+          <div style="font-weight:900;font-size:14px;">{{ fr.from_user.username }}</div>
+          <div style="font-size:12px;color:#92400E;font-weight:600;">Level {{ fr.from_user.get_level }}</div>
+        </div>
+        <button class="friend-btn btn-accept" onclick="acceptFriend({{ fr.from_user.id }})">Accept</button>
+        <button class="friend-btn btn-decline" onclick="removeFriend({{ fr.from_user.id }}, 'pr-{{ fr.from_user.id }}')">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <input class="search-input" type="text" placeholder="🔍 Search users..." oninput="filterUsers(this.value)"/>
+
+    <div id="users-list">
+      {% for item in users_data %}
+      <div class="user-card" id="uc-{{ item.user.id }}" data-name="{{ item.user.username|lower }}">
+        <div class="user-avatar">{{ item.user.avatar }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ item.user.username }}</div>
+          <div class="user-level">Level {{ item.user.get_level }} · {{ item.user.total_xp }} XP</div>
+          <div class="user-xp">🔥 {{ item.user.current_streak }} day streak</div>
+        </div>
+        <div id="btn-{{ item.user.id }}">
+          {% if item.relationship == 'none' %}
+          <button class="friend-btn btn-add" onclick="addFriend({{ item.user.id }})">+ Add</button>
+          {% elif item.relationship == 'sent_pending' %}
+          <button class="friend-btn btn-pending">Pending…</button>
+          {% elif item.relationship == 'sent_accepted' or item.relationship == 'received_accepted' %}
+          <button class="friend-btn btn-friends" onclick="removeFriend({{ item.user.id }}, 'uc-{{ item.user.id }}', true)">✓ Friends</button>
+          {% elif item.relationship == 'received_pending' %}
+          <button class="friend-btn btn-accept" onclick="acceptFriend({{ item.user.id }})">Accept</button>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div style="text-align:center;padding:40px;color:#9CA3AF;font-weight:700;">No other users yet!</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block desktop_content %}
+<div class="animate-slide">
+  <div class="desktop-topbar">
+    <div class="desktop-page-title">👥 Friends</div>
+    {% if pending_count %}<div class="stat-chip" style="background:#FEF3C7;border-color:#FDE68A;color:#92400E;">🔔 {{ pending_count }} pending</div>{% endif %}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px;">
+    <div>
+      {% if pending_requests %}
+      <div class="pending-section" style="margin-bottom:24px;">
+        <div class="pending-title">🔔 Friend Requests ({{ pending_count }})</div>
+        {% for fr in pending_requests %}
+        <div class="pending-item" id="pr-{{ fr.from_user.id }}">
+          <div style="font-size:28px;">{{ fr.from_user.avatar }}</div>
+          <div style="flex:1;">
+            <div style="font-weight:900;font-size:15px;">{{ fr.from_user.username }}</div>
+            <div style="font-size:12px;color:#92400E;font-weight:600;">Level {{ fr.from_user.get_level }} · {{ fr.from_user.total_xp }} XP</div>
+          </div>
+          <button class="friend-btn btn-accept" onclick="acceptFriend({{ fr.from_user.id }})">Accept</button>
+          <button class="friend-btn btn-decline" onclick="removeFriend({{ fr.from_user.id }}, 'pr-{{ fr.from_user.id }}')">✕</button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <input class="search-input" type="text" placeholder="🔍 Search users..." oninput="filterUsers(this.value)"/>
+    </div>
+    <div style="display:flex;align-items:flex-start;">
+      <div style="background:#fff;border-radius:20px;padding:18px;width:100%;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+        <div style="font-weight:900;font-size:15px;color:#374151;margin-bottom:4px;">💡 Tip</div>
+        <div style="font-size:13px;color:#6B7280;font-weight:600;line-height:1.5;">Add friends to see their check-ins in your feed. Cheer each other on and stay accountable together!</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="users-list" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:900px;">
+    {% for item in users_data %}
+    <div class="user-card" id="uc-{{ item.user.id }}" data-name="{{ item.user.username|lower }}">
+      <div class="user-avatar" style="font-size:36px;width:58px;height:58px;">{{ item.user.avatar }}</div>
+      <div class="user-info">
+        <div class="user-name" style="font-size:16px;">{{ item.user.username }}</div>
+        <div class="user-level">Level {{ item.user.get_level }} · {{ item.user.total_xp }} XP</div>
+        <div class="user-xp">🔥 {{ item.user.current_streak }} day streak</div>
+      </div>
+      <div id="btn-{{ item.user.id }}">
+        {% if item.relationship == 'none' %}
+        <button class="friend-btn btn-add" onclick="addFriend({{ item.user.id }})">+ Add</button>
+        {% elif item.relationship == 'sent_pending' %}
+        <button class="friend-btn btn-pending">Pending…</button>
+        {% elif item.relationship == 'sent_accepted' or item.relationship == 'received_accepted' %}
+        <button class="friend-btn btn-friends" onclick="removeFriend({{ item.user.id }}, 'uc-{{ item.user.id }}', true)">✓ Friends</button>
+        {% elif item.relationship == 'received_pending' %}
+        <button class="friend-btn btn-accept" onclick="acceptFriend({{ item.user.id }})">Accept</button>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div style="text-align:center;padding:60px;color:#9CA3AF;font-weight:700;grid-column:span 2;">No other users yet!</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+
+function filterUsers(q) {
+  document.querySelectorAll('#users-list .user-card').forEach(card => {
+    card.style.display = card.dataset.name.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+async function addFriend(uid) {
+  const res = await fetch(`/people/${uid}/add/`, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('btn-' + uid).innerHTML = '<button class="friend-btn btn-pending">Pending…</button>';
+    showToast('👥 Friend request sent!');
+  }
+}
+
+async function acceptFriend(uid) {
+  const res = await fetch(`/people/${uid}/accept/`, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('pr-' + uid)?.remove();
+    const btnWrap = document.getElementById('btn-' + uid);
+    if (btnWrap) btnWrap.innerHTML = `<button class="friend-btn btn-friends" onclick="removeFriend(${uid},'uc-${uid}',true)">✓ Friends</button>`;
+    showToast('🎉 You are now friends!');
+  }
+}
+
+async function removeFriend(uid, cardId, confirm_first=false) {
+  if (confirm_first && !confirm('Remove this friend?')) return;
+  const res = await fetch(`/people/${uid}/remove/`, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById(cardId)?.remove();
+    const btnWrap = document.getElementById('btn-' + uid);
+    if (btnWrap) btnWrap.innerHTML = `<button class="friend-btn btn-add" onclick="addFriend(${uid})">+ Add</button>`;
+    showToast('👋 Removed');
+  }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+</script>
+{% endblock %}

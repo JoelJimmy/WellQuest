@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#667EEA" />
+  <title>WellQuest {% block title %}{% endblock %}</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="WellQuest" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="description" content="Your daily wellness adventure — track habits, earn XP, and level up your health." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Righteous&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #667EEA; --purple-dark: #764BA2;
+      --yellow: #FBBF24; --orange: #F97316;
+      --green: #10B981; --blue: #3B82F6;
+      --bg: #FAFAF5; --card: #ffffff;
+      --text: #111827; --muted: #6B7280; --border: #E5E7EB;
+      --font: 'Nunito', sans-serif; --font-display: 'Righteous', cursive;
+    }
+    html, body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 24px; border-radius: 14px; font-family: var(--font);
+      font-weight: 900; font-size: 15px; border: none; cursor: pointer;
+      transition: all 0.2s ease; text-decoration: none;
+    }
+    .btn:hover { opacity: 0.88; transform: scale(0.98); }
+    .btn-primary { background: linear-gradient(135deg, var(--purple), var(--purple-dark)); color: #fff; }
+
+    .toast {
+      position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+      background: #111827; color: #fff; border-radius: 99px; padding: 11px 22px;
+      font-weight: 800; font-size: 14px; z-index: 9999;
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.22); white-space: nowrap;
+      animation: toastIn 0.3s ease; pointer-events: none;
+    }
+    .xp-pop {
+      position: fixed; top: 42%; left: 50%;
+      font-family: var(--font-display); color: var(--yellow); font-size: 36px;
+      z-index: 9999; pointer-events: none;
+      text-shadow: 0 2px 10px var(--orange); animation: xpPop 0.9s ease forwards;
+    }
+
+    /* MOBILE */
+    .app-shell { display: none; flex-direction: column; min-height: 100vh; max-width: 430px; margin: 0 auto; }
+    .app-shell-body { flex: 1; overflow-y: auto; padding-bottom: 90px; }
+    .mobile-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px; background: var(--card);
+      border-top: 2px solid var(--border); display: flex; padding: 8px 0 18px; z-index: 100;
+    }
+    .mobile-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; text-decoration: none; }
+    .mobile-nav .nav-icon  { font-size: 20px; }
+    .mobile-nav .nav-label { font-size: 10px; font-weight: 900; color: var(--muted); }
+    .mobile-nav a.active .nav-label { color: var(--purple); }
+    .mobile-nav .notif-dot {
+      position: relative; display: inline-block;
+    }
+    .mobile-nav .notif-dot::after {
+      content: ''; position: absolute; top: -2px; right: -2px;
+      width: 8px; height: 8px; background: #EF4444; border-radius: 50%;
+    }
+
+    /* DESKTOP */
+    .desktop-shell { display: none; min-height: 100vh; }
+    .desktop-sidebar {
+      position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+      background: linear-gradient(180deg, #667EEA 0%, #764BA2 100%);
+      padding: 32px 20px; display: flex; flex-direction: column; gap: 6px; z-index: 100;
+      overflow-y: auto;
+    }
+    .desktop-logo { font-family: var(--font-display); color: #fff; font-size: 26px; margin-bottom: 6px; padding: 0 12px; }
+    .desktop-logo span { font-family: var(--font); font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.65); display: block; margin-top: 2px; }
+    .sidebar-user { background: rgba(255,255,255,0.15); border-radius: 14px; padding: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+    .sidebar-avatar { font-size: 28px; width: 44px; height: 44px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+    .sidebar-username { color: #fff; font-weight: 900; font-size: 14px; }
+    .sidebar-level { color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 600; }
+    .sidebar-nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; color: rgba(255,255,255,0.75); text-decoration: none; font-weight: 800; font-size: 14px; transition: all 0.2s ease; position: relative; }
+    .sidebar-nav-item:hover, .sidebar-nav-item.active { background: rgba(255,255,255,0.2); color: #fff; }
+    .sidebar-nav-item .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+    .sidebar-badge { background: #EF4444; color: #fff; border-radius: 99px; font-size: 10px; font-weight: 900; padding: 2px 7px; margin-left: auto; }
+    .sidebar-xp-bar { margin-top: auto; background: rgba(255,255,255,0.15); border-radius: 14px; padding: 14px; }
+    .sidebar-xp-label { display: flex; justify-content: space-between; color: rgba(255,255,255,0.8); font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+    .sidebar-xp-track { background: rgba(255,255,255,0.2); border-radius: 99px; height: 8px; overflow: hidden; }
+    .sidebar-xp-fill { background: linear-gradient(90deg, var(--yellow), var(--orange)); height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+    .desktop-main { margin-left: 260px; padding: 40px; min-height: 100vh; }
+    .desktop-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .desktop-page-title { font-family: var(--font-display); font-size: 30px; color: var(--text); }
+    .desktop-stats-row { display: flex; gap: 12px; align-items: center; }
+    .stat-chip { background: var(--card); border: 2px solid var(--border); border-radius: 14px; padding: 8px 16px; display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14px; }
+
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes toastIn { from { transform: translateX(-50%) translateY(-10px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+    @keyframes xpPop   { 0% { transform: translateX(-50%) scale(0.5); opacity: 1; } 100% { transform: translateX(-50%) scale(1.3) translateY(-60px); opacity: 0; } }
+    @keyframes wiggle  { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+    @keyframes bounce  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes pulse   { 0%,100% { box-shadow: 0 4px 20px rgba(0,0,0,0.07); } 50% { box-shadow: 0 8px 30px rgba(0,0,0,0.15); } }
+    .animate-slide  { animation: slideUp 0.4s ease; }
+    .animate-wiggle { animation: wiggle 1.2s ease infinite; }
+    .animate-bounce { animation: bounce 1.6s ease infinite; }
+    .animate-pulse  { animation: pulse 2.5s ease infinite; }
+
+    @media (max-width: 767px)  { .app-shell { display: flex; } .desktop-shell { display: none !important; } }
+    @media (min-width: 768px)  { .desktop-shell { display: block; } .app-shell { display: none !important; } }
+
+    {% block extra_css %}{% endblock %}
+  </style>
+</head>
+<body>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="toast" id="flash-toast">
+    {% if message.tags == 'success' %}🎉{% else %}⚠️{% endif %} {{ message }}
+  </div>
+  <script>setTimeout(() => { const t = document.getElementById('flash-toast'); if (t) t.remove(); }, 3000);</script>
+  {% endfor %}
+{% endif %}
+
+<!-- MOBILE SHELL -->
+<div class="app-shell">
+  <div class="app-shell-body">{% block mobile_content %}{% endblock %}</div>
+  {% if user.is_authenticated %}
+  <nav class="mobile-nav">
+    <a href="{% url 'home' %}"         class="{% block m_nav_home %}{% endblock %}"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></a>
+    <a href="{% url 'goals' %}"        class="{% block m_nav_goals %}{% endblock %}"><span class="nav-icon">🎯</span><span class="nav-label">Goals</span></a>
+    <a href="{% url 'people' %}"       class="{% block m_nav_people %}{% endblock %}">
+      <span class="nav-icon {% if pending_count %}notif-dot{% endif %}">👥</span>
+      <span class="nav-label">Friends</span>
+    </a>
+    <a href="{% url 'friends_feed' %}" class="{% block m_nav_feed %}{% endblock %}"><span class="nav-icon">📰</span><span class="nav-label">Feed</span></a>
+    <a href="{% url 'badges' %}"       class="{% block m_nav_badges %}{% endblock %}"><span class="nav-icon">🏆</span><span class="nav-label">Badges</span></a>
+  </nav>
+  {% endif %}
+</div>
+
+<!-- DESKTOP SHELL -->
+<div class="desktop-shell">
+  {% if user.is_authenticated %}
+  <aside class="desktop-sidebar">
+    <div class="desktop-logo">WellQuest <span>Your wellness adventure ✨</span></div>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">{{ user.avatar }}</div>
+      <div>
+        <div class="sidebar-username">{{ user.username }}</div>
+        <div class="sidebar-level">Level {{ user.get_level }} · {{ user.total_xp }} XP</div>
+      </div>
+    </div>
+    <a href="{% url 'home' %}"         class="sidebar-nav-item {% block d_nav_home %}{% endblock %}"><span class="nav-icon">🏠</span> Home</a>
+    <a href="{% url 'goals' %}"        class="sidebar-nav-item {% block d_nav_goals %}{% endblock %}"><span class="nav-icon">🎯</span> My Goals</a>
+    <a href="{% url 'people' %}"       class="sidebar-nav-item {% block d_nav_people %}{% endblock %}">
+      <span class="nav-icon">👥</span> Friends
+      {% if pending_count %}<span class="sidebar-badge">{{ pending_count }}</span>{% endif %}
+    </a>
+    <a href="{% url 'friends_feed' %}" class="sidebar-nav-item {% block d_nav_feed %}{% endblock %}"><span class="nav-icon">📰</span> Feed</a>
+    <a href="{% url 'badges' %}"       class="sidebar-nav-item {% block d_nav_badges %}{% endblock %}"><span class="nav-icon">🏆</span> Achievements</a>
+    <a href="{% url 'logout' %}"       class="sidebar-nav-item" style="margin-top:8px;"><span class="nav-icon">👋</span> Logout</a>
+    <div class="sidebar-xp-bar">
+      <div class="sidebar-xp-label">
+        <span>🔥 {{ user.current_streak }} day streak</span>
+        <span>{{ user.get_xp_to_next }} XP to next</span>
+      </div>
+      <div class="sidebar-xp-track">
+        <div class="sidebar-xp-fill" style="width:{{ user.get_level_progress }}%"></div>
+      </div>
+    </div>
+  </aside>
+  {% endif %}
+  <main class="desktop-main">{% block desktop_content %}{% endblock %}</main>
+</div>
+
+{% block extra_js %}{% endblock %}
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/static/sw.js')
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<div class="user-card" id="uc-{{ item.user.id }}">
+    <div class="user-avatar">{{ item.user.avatar }}</div>
+    <div class="user-info">
+      <div class="user-name">{{ item.user.username }}</div>
+      <div class="user-level">Level {{ item.user.get_level }} · {{ item.user.total_xp }} XP</div>
+      <div class="user-xp">🔥 {{ item.user.current_streak }} day streak</div>
+    </div>
+    <div id="btn-{{ item.user.id }}">
+      {% if item.relationship == 'none' %}
+      <button class="friend-btn btn-add" onclick="addFriend({{ item.user.id }})">+ Add</button>
+      {% elif item.relationship == 'sent_pending' %}
+      <button class="friend-btn btn-pending">Pending…</button>
+      {% elif item.relationship == 'sent_accepted' or item.relationship == 'received_accepted' %}
+      <button class="friend-btn btn-friends" onclick="removeFriend({{ item.user.id }}, 'uc-{{ item.user.id }}', true)">✓ Friends</button>
+      {% elif item.relationship == 'received_pending' %}
+      <button class="friend-btn btn-accept" onclick="acceptFriend({{ item.user.id }})">Accept</button>
+      {% endif %}
+    </div>
+  </div>

@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.db.models import Q
+from django.db.models import Q, Count
 from .models import (
     Goal, CustomGoal, CustomGoalCheckIn, Friendship,
     Task, CheckIn, Badge, UserBadge, CATEGORY_CHOICES, CATEGORY_EMOJIS
@@ -91,7 +91,6 @@ def home_view(request):
             'goal': goals.get(cat, ''),
         })
 
-    # Custom goals — active ones only, ordered by least progress first
     today = date.today()
     custom_goals = CustomGoal.objects.filter(user=user, is_completed=False).order_by('created_at')
     checked_today_ids = set(
@@ -310,25 +309,63 @@ def people_view(request):
     User = get_user_model()
     me   = request.user
 
-    all_users    = User.objects.exclude(id=me.id)
     sent_map     = {uid: s for uid, s in Friendship.objects.filter(from_user=me).values_list('to_user_id', 'status')}
     received_map = {uid: s for uid, s in Friendship.objects.filter(to_user=me).values_list('from_user_id', 'status')}
 
+    friend_ids = Friendship.objects.filter(
+        from_user=me, status='accepted'
+    ).values_list('to_user_id', flat=True)
+
+    friends_friendships = Friendship.objects.filter(
+        from_user=me, status='accepted'
+    ).select_related('to_user')
+
+    recommended = User.objects.filter(
+        friendships_received__from_user_id__in=friend_ids,
+        friendships_received__status='accepted',
+    ).exclude(
+        id=me.id
+    ).exclude(
+        id__in=friend_ids
+    ).exclude(
+        Q(friendships_received__from_user=me) &
+        Q(friendships_received__status='pending')
+    ).exclude(
+        Q(friendships_sent__to_user=me) &
+        Q(friendships_sent__status='pending')
+    ).annotate(
+        mutual_count=Count('friendships_received')
+    ).order_by('-mutual_count')[:10]
+
     users_data = []
-    for u in all_users:
-        if u.id in sent_map:
-            rel = 'sent_' + sent_map[u.id]
-        elif u.id in received_map:
-            rel = 'received_' + received_map[u.id]
-        else:
-            rel = 'none'
-        users_data.append({'user': u, 'relationship': rel})
+    for f in friends_friendships:
+        users_data.append({'user': f.to_user, 'relationship': 'sent_accepted'})
+
+    # Search
+    search_query = request.GET.get('q', '').strip()
+    search_results = []
+    if search_query:
+        matches = User.objects.filter(
+            username__icontains=search_query
+        ).exclude(id=me.id)
+
+        for u in matches:
+            if u.id in sent_map:
+                rel = 'sent_' + sent_map[u.id]
+            elif u.id in received_map:
+                rel = 'received_' + received_map[u.id]
+            else:
+                rel = 'none'
+            search_results.append({'user': u, 'relationship': rel})
 
     pending_requests = Friendship.objects.filter(to_user=me, status='pending').select_related('from_user')
     return render(request, 'wellness/people.html', {
         'users_data': users_data,
         'pending_requests': pending_requests,
         'pending_count': pending_requests.count(),
+        'recommended': recommended,
+        'search_results': search_results,
+        'search_query': search_query,
     })
 
 

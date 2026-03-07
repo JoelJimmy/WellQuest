@@ -134,9 +134,3 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(','
 if 'RAILWAY_STATIC_URL' in os.environ:
     ALLOWED_HOSTS.append(os.environ.get('RAILWAY_STATIC_URL').replace('https://', ''))
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///db.sqlite3',
-        conn_max_age=600
-    )
-}

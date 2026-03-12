@@ -7,8 +7,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Q, Count
 from .models import (
-    Goal, CustomGoal, CustomGoalCheckIn, Friendship,
-    Task, CheckIn, Badge, UserBadge, CATEGORY_CHOICES, CATEGORY_EMOJIS
+   Goal, Task, CheckIn, Badge, UserBadge, Friendship, Nudge,
+   CustomGoal, CustomGoalCheckIn, CATEGORY_CHOICES, CATEGORY_EMOJIS
 )
 
 CATEGORY_COLORS = {
@@ -243,9 +243,9 @@ def create_custom_goal_view(request):
 @login_required
 @require_POST
 def checkin_custom_goal_view(request, goal_id):
-    goal    = get_object_or_404(CustomGoal, id=goal_id, user=request.user)
-    today   = date.today()
-    photo   = request.FILES.get('photo') if request.FILES else None
+    goal  = get_object_or_404(CustomGoal, id=goal_id, user=request.user)
+    today = date.today()
+    photo = request.FILES.get('photo') if request.FILES else None
 
     existing = CustomGoalCheckIn.objects.filter(goal=goal, date=today).first()
     if existing:
@@ -301,7 +301,7 @@ def badges_view(request):
     })
 
 
-# ── FRIENDS ───────────────────────────────────────────────────────────────────
+# ── PEOPLE ────────────────────────────────────────────────────────────────────
 
 @login_required
 def people_view(request):
@@ -341,7 +341,6 @@ def people_view(request):
     for f in friends_friendships:
         users_data.append({'user': f.to_user, 'relationship': 'sent_accepted'})
 
-    # Search
     search_query = request.GET.get('q', '').strip()
     search_results = []
     if search_query:
@@ -403,17 +402,93 @@ def remove_friend_view(request, user_id):
     return JsonResponse({'success': True})
 
 
+# ── FRIENDS FEED ──────────────────────────────────────────────────────────────
+
 @login_required
 def friends_feed_view(request):
-    me = request.user
-    friend_ids = Friendship.objects.filter(from_user=me, status='accepted').values_list('to_user_id', flat=True)
-    recent_checkins = CheckIn.objects.filter(
-        user_id__in=friend_ids
-    ).select_related('user', 'task').order_by('-completed_at')[:40]
+    from django.utils import timezone
     from django.contrib.auth import get_user_model
-    friends = get_user_model().objects.filter(id__in=friend_ids)
+    User = get_user_model()
+    today = date.today()
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    me = request.user
+
+    friendships = Friendship.objects.filter(
+        status='accepted'
+    ).filter(
+        Q(from_user=me) | Q(to_user=me)
+    ).values_list('from_user_id', 'to_user_id')
+
+    flat_ids = set()
+    for a, b in friendships:
+        if a != me.id: flat_ids.add(a)
+        if b != me.id: flat_ids.add(b)
+
+    friends = User.objects.filter(id__in=flat_ids)
+
+    checked_in_today = set(
+        CheckIn.objects.filter(user_id__in=flat_ids, date=today)
+        .values_list('user_id', flat=True)
+    )
+
+    # Unchecked friends first (nudgeable), checked in friends last
+    friends_data = sorted([
+        {'user': friend, 'checked_in_today': friend.id in checked_in_today}
+        for friend in friends
+    ], key=lambda x: x['checked_in_today'])
+
+    recent_checkins = CheckIn.objects.filter(
+        user_id__in=flat_ids
+    ).select_related('user', 'task').order_by('-completed_at')[:40]
+
+    incoming_nudges = Nudge.objects.filter(
+        to_user=me, sent_at__gte=today_start
+    ).select_related('from_user')
+
+    nudges_sent_today = set(
+        Nudge.objects.filter(from_user=me, sent_at__gte=today_start)
+        .values_list('to_user_id', flat=True)
+    )
+
     return render(request, 'wellness/friends_feed.html', {
+        'friends_data': friends_data,
         'recent_checkins': recent_checkins,
-        'friends': friends,
-        'friend_count': friends.count(),
+        'friend_count': len(flat_ids),
+        'incoming_nudges': incoming_nudges,
+        'nudges_sent_today': nudges_sent_today,
     })
+
+
+# ── NUDGE ─────────────────────────────────────────────────────────────────────
+
+@login_required
+@require_POST
+def nudge_friend_view(request, user_id):
+    from django.utils import timezone
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    to_user = get_object_or_404(User, id=user_id)
+
+    is_friend = Friendship.objects.filter(
+        status='accepted'
+    ).filter(
+        Q(from_user=request.user, to_user=to_user) |
+        Q(from_user=to_user, to_user=request.user)
+    ).exists()
+
+    if not is_friend:
+        return JsonResponse({'error': 'Not friends'}, status=403)
+
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    already_nudged = Nudge.objects.filter(
+        from_user=request.user,
+        to_user=to_user,
+        sent_at__gte=today_start
+    ).exists()
+
+    if already_nudged:
+        return JsonResponse({'error': 'Already nudged today', 'already_nudged': True})
+
+    Nudge.objects.create(from_user=request.user, to_user=to_user)
+    return JsonResponse({'success': True})

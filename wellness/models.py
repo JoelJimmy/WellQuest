@@ -136,3 +136,15 @@ class UserBadge(models.Model):
 
     def __str__(self):
         return f"{self.user.email} earned {self.badge.name}"
+    
+
+class Nudge(models.Model):
+    from_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='nudges_sent')
+    to_user   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='nudges_received')
+    sent_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-sent_at']
+
+    def __str__(self):
+        return f"{self.from_user.username} nudged {self.to_user.username}"

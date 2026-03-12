@@ -23,6 +23,40 @@
 .feed-cat-chip { display:inline-flex; align-items:center; gap:4px; border-radius:8px; padding:3px 9px; font-size:11px; font-weight:800; margin-top:6px; }
 .xp-chip { background:#FEF3C7; color:#92400E; border-radius:8px; padding:3px 9px; font-size:11px; font-weight:800; }
 
+.nudge-btn {
+  border:2px solid #FED7AA; border-radius:12px; padding:8px 12px; font-size:18px;
+  cursor:pointer; transition:all .2s; flex-shrink:0; line-height:1;
+  background:#FFF7ED;
+}
+.nudge-btn:hover { transform:scale(1.15); background:#FEF3C7; }
+.nudge-btn:disabled { opacity:0.5; cursor:default; transform:none; }
+.nudge-btn.nudged { background:#D1FAE5; border-color:#6EE7B7; }
+
+.nudge-banner {
+  background:linear-gradient(135deg,#FEF3C7,#FDE68A);
+  border:2px solid #F59E0B; border-radius:20px;
+  padding:16px 20px; margin-bottom:20px;
+}
+.nudge-banner-title { font-weight:900; font-size:14px; color:#92400E; margin-bottom:8px; }
+.nudge-banner-item  { font-size:13px; color:#78350F; font-weight:700; padding:3px 0; }
+
+.status-section { margin-bottom:24px; }
+.status-title { font-weight:900; font-size:13px; color:#6B7280; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; }
+.status-card {
+  background:#fff; border:2px solid #F3F4F6; border-radius:16px;
+  padding:12px 14px; display:flex; align-items:center; gap:12px; margin-bottom:8px;
+}
+.status-card.not-checked { border-color:#FED7AA; background:#FFFBF5; }
+.status-card.checked     { border-color:#A7F3D0; background:#F0FDF9; }
+.status-avatar { font-size:24px; width:40px; height:40px; background:#F3F4F6; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.status-info { flex:1; }
+.status-name { font-weight:900; font-size:13px; color:#111827; }
+.status-label { font-size:11px; font-weight:700; margin-top:2px; }
+.status-label.pending { color:#F97316; }
+.status-label.done    { color:#10B981; }
+
+.section-divider { font-weight:900; font-size:13px; color:#6B7280; text-transform:uppercase; letter-spacing:0.05em; margin:20px 0 10px; }
+
 .empty-feed { text-align:center; padding:60px 24px; color:#9CA3AF; }
 .empty-feed-emoji { font-size:56px; margin-bottom:16px; display:block; }
 .empty-feed-title { font-family:'Righteous',cursive; font-size:22px; color:#374151; margin-bottom:8px; }
@@ -41,7 +75,47 @@
     <div style="color:rgba(255,255,255,0.8);font-weight:700;font-size:13px;">{{ friend_count }} friend{{ friend_count|pluralize }} · recent check-ins</div>
   </div>
   <div style="padding:20px;margin-top:-20px;">
+
+    {% if incoming_nudges %}
+    <div class="nudge-banner">
+      <div class="nudge-banner-title">💪 You've been nudged today!</div>
+      {% for nudge in incoming_nudges %}
+      <div class="nudge-banner-item">{{ nudge.from_user.avatar }} {{ nudge.from_user.username }} is rooting for you!</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if friends_data %}
+    <div class="status-section">
+      <div class="status-title">Today's Status</div>
+      {% for item in friends_data %}
+      <div class="status-card {% if item.checked_in_today %}checked{% else %}not-checked{% endif %}">
+        <div class="status-avatar">{{ item.user.avatar }}</div>
+        <div class="status-info">
+          <div class="status-name">{{ item.user.username }}</div>
+          {% if item.checked_in_today %}
+          <div class="status-label done">✓ Checked in today</div>
+          {% else %}
+          <div class="status-label pending">⏳ Hasn't checked in yet</div>
+          {% endif %}
+        </div>
+        {% if not item.checked_in_today %}
+        <button
+          class="nudge-btn {% if item.user.id in nudges_sent_today %}nudged{% endif %}"
+          onclick="nudgeFriend({{ item.user.id }}, this)"
+          {% if item.user.id in nudges_sent_today %}disabled title="Already nudged!"{% else %}title="Nudge {{ item.user.username }}"{% endif %}>
+          {% if item.user.id in nudges_sent_today %}✓{% else %}💪{% endif %}
+        </button>
+        {% else %}
+        <span style="font-size:20px;">🎉</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     {% if recent_checkins %}
+    <div class="section-divider">Recent Activity</div>
       {% for checkin in recent_checkins %}
       <div class="feed-item">
         <div class="feed-avatar" style="
@@ -67,6 +141,7 @@
       </div>
       {% endfor %}
     {% else %}
+      {% if not friends_data %}
       <div class="empty-feed">
         <span class="empty-feed-emoji">👥</span>
         <div class="empty-feed-title">Nothing here yet!</div>
@@ -79,6 +154,7 @@
           {% endif %}
         </div>
       </div>
+      {% endif %}
     {% endif %}
   </div>
 </div>
@@ -94,46 +170,120 @@
     </div>
   </div>
 
-  {% if recent_checkins %}
-  <div style="max-width:600px;">
-    {% for checkin in recent_checkins %}
-    <div class="feed-item">
-      <div class="feed-avatar" style="font-size:32px;width:52px;height:52px;
-        {% if checkin.category == 'mental' %}background:#EDE9FE;
-        {% elif checkin.category == 'fitness' %}background:#FFF7ED;
-        {% elif checkin.category == 'nutrition' %}background:#ECFDF5;
-        {% else %}background:#EFF6FF;{% endif %}">
-        {{ checkin.user.avatar }}
-      </div>
-      <div class="feed-body">
-        <div class="feed-user" style="font-size:15px;">{{ checkin.user.username }}</div>
-        <div class="feed-action">completed a {{ checkin.get_category_display }} check-in</div>
-        {% if checkin.task %}<div style="font-size:14px;color:#374151;font-weight:700;margin-top:4px;">"{{ checkin.task.text }}"</div>{% endif %}
-        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;">
-          <span class="feed-cat-chip cat-{{ checkin.category }}">
-            {% if checkin.category == 'mental' %}🧘{% elif checkin.category == 'fitness' %}💪{% elif checkin.category == 'nutrition' %}🥗{% else %}😴{% endif %}
-            {{ checkin.get_category_display }}
-          </span>
-          <span class="xp-chip">+{{ checkin.xp_earned }} XP</span>
-          <span class="feed-time" style="margin-top:0;">{{ checkin.completed_at|timesince }} ago</span>
-        </div>
-      </div>
-    </div>
+  {% if incoming_nudges %}
+  <div class="nudge-banner" style="max-width:700px;margin-bottom:24px;">
+    <div class="nudge-banner-title">💪 You've been nudged today!</div>
+    {% for nudge in incoming_nudges %}
+    <div class="nudge-banner-item">{{ nudge.from_user.avatar }} {{ nudge.from_user.username }} is rooting for you!</div>
     {% endfor %}
   </div>
-  {% else %}
-  <div class="empty-feed" style="padding:80px 0;">
-    <span class="empty-feed-emoji">👥</span>
-    <div class="empty-feed-title">Nothing here yet!</div>
-    <div class="empty-feed-sub">
-      {% if friend_count == 0 %}
-        Add friends to see their check-ins here.<br>
-        <a href="{% url 'people' %}" style="color:#667EEA;font-weight:800;text-decoration:none;">Find friends →</a>
+  {% endif %}
+
+  <div style="display:grid;grid-template-columns:280px 1fr;gap:24px;max-width:900px;align-items:start;">
+
+    <!-- Left: Today's Status -->
+    {% if friends_data %}
+    <div>
+      <div class="status-title">Today's Status</div>
+      {% for item in friends_data %}
+      <div class="status-card {% if item.checked_in_today %}checked{% else %}not-checked{% endif %}">
+        <div class="status-avatar">{{ item.user.avatar }}</div>
+        <div class="status-info">
+          <div class="status-name">{{ item.user.username }}</div>
+          {% if item.checked_in_today %}
+          <div class="status-label done">✓ Checked in</div>
+          {% else %}
+          <div class="status-label pending">⏳ Not yet</div>
+          {% endif %}
+        </div>
+        {% if not item.checked_in_today %}
+        <button
+          class="nudge-btn {% if item.user.id in nudges_sent_today %}nudged{% endif %}"
+          onclick="nudgeFriend({{ item.user.id }}, this)"
+          {% if item.user.id in nudges_sent_today %}disabled title="Already nudged!"{% else %}title="Nudge {{ item.user.username }}"{% endif %}>
+          {% if item.user.id in nudges_sent_today %}✓{% else %}💪{% endif %}
+        </button>
+        {% else %}
+        <span style="font-size:20px;">🎉</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Right: Recent Activity -->
+    <div>
+      <div class="status-title">Recent Activity</div>
+      {% if recent_checkins %}
+        {% for checkin in recent_checkins %}
+        <div class="feed-item">
+          <div class="feed-avatar" style="font-size:32px;width:52px;height:52px;
+            {% if checkin.category == 'mental' %}background:#EDE9FE;
+            {% elif checkin.category == 'fitness' %}background:#FFF7ED;
+            {% elif checkin.category == 'nutrition' %}background:#ECFDF5;
+            {% else %}background:#EFF6FF;{% endif %}">
+            {{ checkin.user.avatar }}
+          </div>
+          <div class="feed-body">
+            <div class="feed-user" style="font-size:15px;">{{ checkin.user.username }}</div>
+            <div class="feed-action">completed a {{ checkin.get_category_display }} check-in</div>
+            {% if checkin.task %}<div style="font-size:14px;color:#374151;font-weight:700;margin-top:4px;">"{{ checkin.task.text }}"</div>{% endif %}
+            <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;">
+              <span class="feed-cat-chip cat-{{ checkin.category }}">
+                {% if checkin.category == 'mental' %}🧘{% elif checkin.category == 'fitness' %}💪{% elif checkin.category == 'nutrition' %}🥗{% else %}😴{% endif %}
+                {{ checkin.get_category_display }}
+              </span>
+              <span class="xp-chip">+{{ checkin.xp_earned }} XP</span>
+              <span class="feed-time" style="margin-top:0;">{{ checkin.completed_at|timesince }} ago</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
       {% else %}
-        Your friends haven't checked in recently. Check back later!
+      <div class="empty-feed" style="padding:40px 0;">
+        <span class="empty-feed-emoji">📭</span>
+        <div class="empty-feed-title">No activity yet!</div>
+        <div class="empty-feed-sub">
+          {% if friend_count == 0 %}
+            <a href="{% url 'people' %}" style="color:#667EEA;font-weight:800;text-decoration:none;">Find friends →</a>
+          {% else %}
+            Your friends haven't checked in recently.
+          {% endif %}
+        </div>
+      </div>
       {% endif %}
     </div>
+
   </div>
-  {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+
+async function nudgeFriend(uid, btn) {
+  btn.disabled = true;
+  const res = await fetch(`/people/${uid}/nudge/`, { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  const data = await res.json();
+  if (data.success) {
+    btn.textContent = '✓';
+    btn.className = 'nudge-btn nudged';
+    btn.title = 'Already nudged!';
+    showToast('💪 Nudge sent!');
+  } else if (data.already_nudged) {
+    btn.textContent = '✓';
+    btn.className = 'nudge-btn nudged';
+  } else {
+    btn.disabled = false;
+  }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+</script>
 {% endblock %}

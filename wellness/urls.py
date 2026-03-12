@@ -25,4 +25,7 @@ urlpatterns = [
     path('people/<int:user_id>/accept/', views.accept_friend_request_view, name='accept_friend_request'),
     path('people/<int:user_id>/remove/', views.remove_friend_view, name='remove_friend'),
     path('friends/', views.friends_feed_view, name='friends_feed'),
+
+    #nudges
+    path('people/<int:user_id>/nudge/', views.nudge_friend_view, name='nudge_friend'),
 ]
